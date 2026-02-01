@@ -167,8 +167,11 @@ The API will be available on `http://localhost:5000` by default.
    - Go to [Vercel](https://vercel.com) → Add New → Project.
    - Import your GitHub repo (this backend repo).
    - **Framework Preset:** Other (or leave as detected).
-   - **Environment variables:** Add `MONGO_URI` = your Atlas connection string.
+   - **Environment variables:** Add `MONGO_URI` = your Atlas connection string (e.g. `mongodb+srv://user:pass@cluster.mongodb.net/zia-clinic?retryWrites=true&w=majority`).
    - Deploy. Vercel will detect the Express app from `src/app.js` and deploy it as a serverless function.
+
+   **If you see "MONGO_URI is not set" or "Database not connected":**  
+   In Vercel → your project → **Settings** → **Environment Variables**, add `MONGO_URI` for **Production** (and **Preview** if you use preview deployments). Then trigger a **Redeploy** (Deployments → ⋮ on latest → Redeploy) so the new variable is applied.
 
 4. **Check that it works:**
    - Root: `GET https://your-project.vercel.app` → `{ "status": "ok", "message": "ZIA Clinic API" }`

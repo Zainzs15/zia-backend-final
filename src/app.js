@@ -41,11 +41,16 @@ app.get("/", (_req, res) => {
   res.json({ status: "ok", message: "ZIA Clinic API" });
 });
 
+// Avoid 404s for browser favicon requests
+app.get("/favicon.ico", (_req, res) => res.status(204).end());
+app.get("/favicon.png", (_req, res) => res.status(204).end());
+
 app.get("/health", (_req, res) => {
   const dbConnected = mongoose.connection.readyState === 1;
   res.status(dbConnected ? 200 : 503).json({
     status: dbConnected ? "ok" : "degraded",
     db: dbConnected ? "connected" : "disconnected",
+    ...(dbConnected ? {} : { hint: "Set MONGO_URI in Vercel → Project → Settings → Environment Variables, then redeploy." }),
   });
 });
 
