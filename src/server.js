@@ -33,7 +33,9 @@ app.get("/", (_req, res) => {
   res.json({ status: "ok", message: "ZIA Clinic API" });
 });
 
+await connectDB();
 app.use("/api/appointments", appointmentsRouter);
+
 app.use("/api/payments", paymentsRouter);
 
 app.use((err, _req, res, _next) => {

@@ -3,36 +3,54 @@ import Appointment from "../models/Appointment.js";
 
 const router = Router();
 
+// clinic configuration
 const CLINIC_START_HOUR = 19; // 7 PM
-const CLINIC_END_HOUR = 22; // 10 PM
+const CLINIC_END_HOUR = 22;   // 10 PM
 const SLOT_MINUTES = 15;
 
-function getDateKey(dateString) {
-  if (dateString) return dateString;
-  const now = new Date();
-  return now.toISOString().slice(0, 10); // YYYY-MM-DD
+/**
+ * Ensure DB is connected before queries
+ */
+function ensureDBConnected() {
+  if (Appointment.db.readyState !== 1) {
+    throw new Error("Database not connected");
+  }
 }
 
+/**
+ * Normalize date (YYYY-MM-DD)
+ */
+function getDateKey(dateString) {
+  if (dateString) return dateString;
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Calculate next available slot
+ */
 async function getNextSlotForDate(dateKey) {
-  // Coundt existing appointments for this date
+  ensureDBConnected();
+
   const existingCount = await Appointment.countDocuments({
     preferredDate: dateKey,
   });
 
-  const totalSlotsPerDay =
+  const totalSlots =
     ((CLINIC_END_HOUR - CLINIC_START_HOUR) * 60) / SLOT_MINUTES;
 
-  if (existingCount >= totalSlotsPerDay) {
-    return null; // no more slots
-  }
+  if (existingCount >= totalSlots) return null;
 
-  const start = new Date(
+  const startTime = new Date(
     `${dateKey}T${String(CLINIC_START_HOUR).padStart(2, "0")}:00:00`
   );
+
   const slotStart = new Date(
-    start.getTime() + existingCount * SLOT_MINUTES * 60 * 1000
+    startTime.getTime() + existingCount * SLOT_MINUTES * 60 * 1000
   );
-  const slotEnd = new Date(slotStart.getTime() + SLOT_MINUTES * 60 * 1000);
+
+  const slotEnd = new Date(
+    slotStart.getTime() + SLOT_MINUTES * 60 * 1000
+  );
 
   return {
     slotStart,
@@ -41,137 +59,151 @@ async function getNextSlotForDate(dateKey) {
   };
 }
 
-// GET all appointments
+/* ============================
+   GET ALL APPOINTMENTS
+============================ */
 router.get("/", async (_req, res) => {
   try {
+    ensureDBConnected();
+
     const appointments = await Appointment.find()
       .sort({ createdAt: -1 })
       .lean();
+
     res.json({ data: appointments });
   } catch (err) {
-    console.error("Error fetching appointments:", err);
+    console.error(err);
     res.status(500).json({ error: "Failed to fetch appointments" });
   }
 });
 
-// GET appointments by date
+/* ============================
+   GET APPOINTMENTS BY DATE
+============================ */
 router.get("/date/:date", async (req, res) => {
   try {
+    ensureDBConnected();
+
     const { date } = req.params;
-    const appointments = await Appointment.find({ preferredDate: date })
+
+    const appointments = await Appointment.find({
+      preferredDate: date,
+    })
       .sort({ slotStart: 1 })
       .lean();
+
     res.json({ data: appointments });
   } catch (err) {
-    console.error("Error fetching appointments by date:", err);
+    console.error(err);
     res.status(500).json({ error: "Failed to fetch appointments" });
   }
 });
 
-// GET single appointment by ID
+/* ============================
+   GET SINGLE APPOINTMENT
+============================ */
 router.get("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const appointment = await Appointment.findById(id).lean();
-    
+    ensureDBConnected();
+
+    const appointment = await Appointment.findById(req.params.id).lean();
+
     if (!appointment) {
       return res.status(404).json({ error: "Appointment not found" });
     }
-    
+
     res.json({ data: appointment });
   } catch (err) {
-    console.error("Error fetching appointment:", err);
+    console.error(err);
     res.status(500).json({ error: "Failed to fetch appointment" });
   }
 });
 
-// POST create new appointment
+/* ============================
+   CREATE APPOINTMENT
+============================ */
 router.post("/", async (req, res) => {
   try {
-    const { name, phone, preferredDate, concern, plan } = req.body || {};
+    ensureDBConnected();
+
+    const { name, phone, preferredDate, concern, plan } = req.body;
 
     if (!name || !phone) {
-      return res.status(400).json({ error: "Name and phone are required" });
-    }
-
-    const dateKey = getDateKey(preferredDate);
-    const nextSlot = await getNextSlotForDate(dateKey);
-
-    if (!nextSlot) {
       return res.status(400).json({
-        error: "No slots available between 7 PM and 10 PM for this date.",
+        error: "Name and phone are required",
       });
     }
 
-    const { slotStart, slotEnd, patientNumber } = nextSlot;
+    const dateKey = getDateKey(preferredDate);
+    const slot = await getNextSlotForDate(dateKey);
 
-    const appointment = new Appointment({
+    if (!slot) {
+      return res.status(400).json({
+        error: "No slots available between 7 PM and 10 PM",
+      });
+    }
+
+    const appointment = await Appointment.create({
       name,
       phone,
       preferredDate: dateKey,
       concern: concern || "",
       plan: plan || null,
-      patientNumber,
-      slotStart,
-      slotEnd,
+      patientNumber: slot.patientNumber,
+      slotStart: slot.slotStart,
+      slotEnd: slot.slotEnd,
       status: "pending",
     });
 
-    const savedAppointment = await appointment.save();
-
-    res.status(201).json({ data: savedAppointment });
+    res.status(201).json({ data: appointment });
   } catch (err) {
     console.error("Error creating appointment:", err);
-    if (err.name === "ValidationError") {
-      return res.status(400).json({ error: err.message });
-    }
-    res.status(500).json({ error: "Failed to create appointment" });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// PATCH update appointment status
+/* ============================
+   UPDATE APPOINTMENT
+============================ */
 router.patch("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    ensureDBConnected();
 
-    if (status && !["pending", "confirmed", "completed", "cancelled"].includes(status)) {
-      return res.status(400).json({ error: "Invalid status value" });
-    }
-
-    const appointment = await Appointment.findByIdAndUpdate(
-      id,
-      { ...req.body },
+    const updated = await Appointment.findByIdAndUpdate(
+      req.params.id,
+      req.body,
       { new: true, runValidators: true }
     ).lean();
 
-    if (!appointment) {
+    if (!updated) {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    res.json({ data: appointment });
+    res.json({ data: updated });
   } catch (err) {
-    console.error("Error updating appointment:", err);
+    console.error(err);
     res.status(500).json({ error: "Failed to update appointment" });
   }
 });
 
-// DELETE appointment
+/* ============================
+   DELETE APPOINTMENT
+============================ */
 router.delete("/:id", async (req, res) => {
   try {
-    const { id } = req.params;
-    const appointment = await Appointment.findByIdAndDelete(id).lean();
+    ensureDBConnected();
 
-    if (!appointment) {
+    const deleted = await Appointment.findByIdAndDelete(req.params.id).lean();
+
+    if (!deleted) {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    res.json({ message: "Appointment deleted successfully", data: appointment });
+    res.json({ message: "Appointment deleted", data: deleted });
   } catch (err) {
-    console.error("Error deleting appointment:", err);
+    console.error(err);
     res.status(500).json({ error: "Failed to delete appointment" });
   }
 });
 
 export default router;
-
