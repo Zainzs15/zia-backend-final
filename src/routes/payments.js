@@ -32,6 +32,7 @@ router.get("/", async (_req, res) => {
 // GET payment by ID
 router.get("/:id", async (req, res) => {
   try {
+    ensureDBConnected();
     const { id } = req.params;
     const payment = await Payment.findById(id)
       .populate("appointmentId", "name phone preferredDate patientNumber")

@@ -41,9 +41,10 @@ app.get("/", (_req, res) => {
   res.json({ status: "ok", message: "ZIA Clinic API" });
 });
 
-// Avoid 404s for browser favicon requests
+// Avoid 404s for browser favicon requests (204 = no content, stops retries)
 app.get("/favicon.ico", (_req, res) => res.status(204).end());
 app.get("/favicon.png", (_req, res) => res.status(204).end());
+app.get("/favicon", (_req, res) => res.status(204).end());
 
 app.get("/health", (_req, res) => {
   const dbConnected = mongoose.connection.readyState === 1;
