@@ -15,7 +15,7 @@ const appointmentSchema = new mongoose.Schema(
     },
 
     preferredDate: {
-      type: String, // YYYY-MM-DD
+      type: String, // YYYY-MM-DDedrtrhrhgdgfdg
       required: true,
       index: true,
     },
