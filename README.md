@@ -16,7 +16,8 @@ BACKEND/
   package.json
   .env.example         # Environment variables template
   src/
-    server.js          # App entrypoint
+    app.js             # Express app (used by Vercel + local server)
+    server.js          # Local dev entrypoint (connectDB + listen)
     config/
       db.js            # MongoDB connection using Mongoose
     models/
@@ -153,6 +154,27 @@ The API will be available on `http://localhost:5000` by default.
 - `status` (String, enum: "pending", "completed", "failed", "refunded", default: "pending")
 - `appointmentId` (ObjectId, reference to Appointment, optional)
 - `createdAt`, `updatedAt` (auto-generated timestamps)
+
+## Deploy to production (Vercel)
+
+1. **Push this repo to GitHub** (no `.env` file — it’s gitignored).
+
+2. **Create a MongoDB database** (e.g. [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)):
+   - Create a cluster and get the connection string.
+   - Example: `mongodb+srv://USER:PASSWORD@cluster.mongodb.net/zia-clinic?retryWrites=true&w=majority`.
+
+3. **Deploy the backend on Vercel:**
+   - Go to [Vercel](https://vercel.com) → Add New → Project.
+   - Import your GitHub repo (this backend repo).
+   - **Framework Preset:** Other (or leave as detected).
+   - **Environment variables:** Add `MONGO_URI` = your Atlas connection string.
+   - Deploy. Vercel will detect the Express app from `src/app.js` and deploy it as a serverless function.
+
+4. **Check that it works:**
+   - Root: `GET https://your-project.vercel.app` → `{ "status": "ok", "message": "ZIA Clinic API" }`
+   - Health: `GET https://your-project.vercel.app/health` → `{ "status": "ok", "db": "connected" }` (if `MONGO_URI` is set and connected).
+
+5. **Frontend / Admin:** Set `VITE_API_BASE_URL` to your deployed backend URL (e.g. `https://your-project.vercel.app`) in their `.env` or hosting env vars.
 
 ## Notes
 

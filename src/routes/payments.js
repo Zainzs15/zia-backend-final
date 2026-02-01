@@ -6,9 +6,16 @@ const router = Router();
 
 const JAZZCASH_TARGET_NUMBER = "0305-2654324";
 
+function ensureDBConnected() {
+  if (Payment.db.readyState !== 1) {
+    throw new Error("Database not connected");
+  }
+}
+
 // GET all payments
 router.get("/", async (_req, res) => {
   try {
+    ensureDBConnected();
     const payments = await Payment.find()
       .populate("appointmentId", "name phone preferredDate patientNumber")
       .sort({ createdAt: -1 })
@@ -44,6 +51,7 @@ router.get("/:id", async (req, res) => {
 // POST create new payment
 router.post("/", async (req, res) => {
   try {
+    ensureDBConnected();
     const { amount, plan, name, phone, method, transactionId, appointmentId } =
       req.body || {};
 
@@ -110,6 +118,7 @@ router.post("/", async (req, res) => {
 // PATCH update payment status
 router.patch("/:id", async (req, res) => {
   try {
+    ensureDBConnected();
     const { id } = req.params;
     const { status, transactionId } = req.body;
 
@@ -146,6 +155,7 @@ router.patch("/:id", async (req, res) => {
 // DELETE payment
 router.delete("/:id", async (req, res) => {
   try {
+    ensureDBConnected();
     const { id } = req.params;
     const payment = await Payment.findByIdAndDelete(id).lean();
 
