@@ -8,7 +8,8 @@ export async function connectDB() {
 
   try {
     await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 10000,
+      // These options are recommended for Mongoose 6+
+      // Remove deprecated options if using older versions
     });
     console.log("✅ MongoDB connected successfully");
     
@@ -29,8 +30,6 @@ export async function connectDB() {
     });
   } catch (err) {
     console.error("❌ MongoDB connection error:", err);
-    // Throw so Express can return 500 (Vercel serverless); local server.js will catch and exit
-    throw err;
+    process.exit(1);
   }
 }
-

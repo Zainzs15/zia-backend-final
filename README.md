@@ -16,8 +16,7 @@ BACKEND/
   package.json
   .env.example         # Environment variables template
   src/
-    app.js             # Express app (used by Vercel + local server)
-    server.js          # Local dev entrypoint (connectDB + listen)
+    server.js          # App entrypoint
     config/
       db.js            # MongoDB connection using Mongoose
     models/
@@ -155,7 +154,7 @@ The API will be available on `http://localhost:5000` by default.
 - `appointmentId` (ObjectId, reference to Appointment, optional)
 - `createdAt`, `updatedAt` (auto-generated timestamps)
 
-## Deploy to production (Vercel)
+## Deploy to production (e.g. Render)
 
 1. **Push this repo to GitHub** (no `.env` file — it’s gitignored).
 
@@ -163,21 +162,18 @@ The API will be available on `http://localhost:5000` by default.
    - Create a cluster and get the connection string.
    - Example: `mongodb+srv://USER:PASSWORD@cluster.mongodb.net/zia-clinic?retryWrites=true&w=majority`.
 
-3. **Deploy the backend on Vercel:**
-   - Go to [Vercel](https://vercel.com) → Add New → Project.
-   - Import your GitHub repo (this backend repo).
-   - **Framework Preset:** Other (or leave as detected).
-   - **Environment variables:** Add `MONGO_URI` = your Atlas connection string (e.g. `mongodb+srv://user:pass@cluster.mongodb.net/zia-clinic?retryWrites=true&w=majority`).
-   - Deploy. Vercel will detect the Express app from `src/app.js` and deploy it as a serverless function.
-
-   **If you see "MONGO_URI is not set" or "Database not connected":**  
-   In Vercel → your project → **Settings** → **Environment Variables**, add `MONGO_URI` for **Production** (and **Preview** if you use preview deployments). Then trigger a **Redeploy** (Deployments → ⋮ on latest → Redeploy) so the new variable is applied.
+3. **Deploy the backend** (Render example):
+   - Go to [Render](https://render.com) → New → Web Service.
+   - Connect your GitHub repo (this backend repo).
+   - **Build command:** `npm install`
+   - **Start command:** `npm start`
+   - **Environment:** Add variable `MONGO_URI` = your Atlas connection string (no quotes).
+   - Deploy. The service will start; with `MONGO_URI` set, the database will connect.
 
 4. **Check that it works:**
-   - Root: `GET https://your-project.vercel.app` → `{ "status": "ok", "message": "ZIA Clinic API" }`
-   - Health: `GET https://your-project.vercel.app/health` → `{ "status": "ok", "db": "connected" }` (if `MONGO_URI` is set and connected).
+   - Root: `GET https://your-app.onrender.com` → `{ "status": "ok", "message": "ZIA Clinic API" }`
 
-5. **Frontend / Admin:** Set `VITE_API_BASE_URL` to your deployed backend URL (e.g. `https://your-project.vercel.app`) in their `.env` or hosting env vars.
+5. **Frontend / Admin:** Set `VITE_API_BASE_URL` to your deployed backend URL (e.g. `https://your-app.onrender.com`) in their `.env` or hosting env vars.
 
 ## Notes
 
