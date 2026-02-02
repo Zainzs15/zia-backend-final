@@ -1,16 +1,8 @@
 import mongoose from "mongoose";
 
 export async function connectDB() {
-  if (!process.env.MONGO_URI) {
-    console.warn("MONGO_URI is not set. Skipping DB connection.");
-    return;
-  }
-
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      // These options are recommended for Mongoose 6+
-      // Remove deprecated options if using older versions
-    });
+    //await mongoose.connect(yahan mongodb ki file);
     console.log("✅ MongoDB connected successfully");
     
     // Handle connection events
